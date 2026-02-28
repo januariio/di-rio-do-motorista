@@ -5,7 +5,7 @@ const navItems = [
   { to: '/', icon: Home, label: 'Início' },
   { to: '/nova-viagem', icon: PlusCircle, label: 'Nova' },
   { to: '/historico', icon: History, label: 'Histórico' },
-  { to: '/abastecimento', icon: Fuel, label: 'Diesel' },
+  { to: '/abastecimento', icon: Fuel, label: 'Abastecimento' },
   { to: '/fechamento', icon: BarChart3, label: 'Mensal' },
 ];
 
