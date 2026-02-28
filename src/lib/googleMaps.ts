@@ -1,28 +1,7 @@
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 
-let loadPromise: Promise<void> | null = null;
-
 export function isGoogleMapsAvailable(): boolean {
-  return !!API_KEY;
-}
-
-export function loadGoogleMaps(): Promise<void> {
-  if (!API_KEY) return Promise.reject(new Error('VITE_GOOGLE_MAPS_API_KEY não configurada'));
-
-  if (window.google?.maps) return Promise.resolve();
-
-  if (loadPromise) return loadPromise;
-
-  loadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Falha ao carregar Google Maps'));
-    document.head.appendChild(script);
-  });
-
-  return loadPromise;
+  return !!API_KEY && API_KEY !== 'sua-api-key-aqui';
 }
 
 export interface DistanceResult {
@@ -31,36 +10,47 @@ export interface DistanceResult {
   durationText: string;
 }
 
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}min`;
+  return `${m}min`;
+}
+
 export async function calcularDistancia(origem: string, destino: string): Promise<DistanceResult> {
-  await loadGoogleMaps();
+  if (!API_KEY) throw new Error('API key não configurada');
 
-  return new Promise((resolve, reject) => {
-    const service = new google.maps.DistanceMatrixService();
-    service.getDistanceMatrix(
-      {
-        origins: [origem],
-        destinations: [destino],
-        travelMode: google.maps.TravelMode.DRIVING,
-        unitSystem: google.maps.UnitSystem.METRIC,
-      },
-      (response, status) => {
-        if (status !== 'OK' || !response) {
-          reject(new Error('Erro ao calcular distância'));
-          return;
-        }
-
-        const element = response.rows[0]?.elements[0];
-        if (!element || element.status !== 'OK') {
-          reject(new Error('Não foi possível calcular a rota entre as cidades'));
-          return;
-        }
-
-        resolve({
-          distanceKm: Math.round(element.distance.value / 1000),
-          distanceText: element.distance.text,
-          durationText: element.duration.text,
-        });
-      }
-    );
+  const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': API_KEY,
+      'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+    },
+    body: JSON.stringify({
+      origin: { address: `${origem}, Brasil` },
+      destination: { address: `${destino}, Brasil` },
+      travelMode: 'DRIVE',
+    }),
   });
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message || 'Erro na API do Google Maps');
+  }
+
+  const route = data.routes?.[0];
+  if (!route) {
+    throw new Error('Não foi possível calcular a rota entre as cidades');
+  }
+
+  const distanceKm = Math.round(route.distanceMeters / 1000);
+  const durationSeconds = parseInt(route.duration?.replace('s', '') || '0', 10);
+
+  return {
+    distanceKm,
+    distanceText: `${distanceKm} km`,
+    durationText: formatDuration(durationSeconds),
+  };
 }
