@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { StoreProvider } from "@/store/StoreContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import MobileLayout from "@/components/MobileLayout";
@@ -41,7 +41,7 @@ function AppRoutes() {
 
   return (
     <StoreProvider>
-      <HashRouter>
+      <BrowserRouter>
         <MobileLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -54,7 +54,7 @@ function AppRoutes() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MobileLayout>
-      </HashRouter>
+      </BrowserRouter>
     </StoreProvider>
   );
 }
