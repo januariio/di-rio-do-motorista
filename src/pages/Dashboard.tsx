@@ -1,14 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/StoreContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/utils/calculadora';
 import StatCard from '@/components/StatCard';
-import { Truck, PlusCircle, Fuel, History, BarChart3, MapPin } from 'lucide-react';
+import { Truck, PlusCircle, Fuel, History, BarChart3, MapPin, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMemo } from 'react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { profile, viagens, despesas } = useAppStore();
+  const { profile: localProfile, viagens, despesas } = useAppStore();
+  const { profile: authProfile, signOut } = useAuth();
+  const profile = authProfile ?? localProfile;
 
   const viagemAtiva = viagens.find(v => v.status === 'ativa');
 
@@ -30,12 +33,19 @@ export default function Dashboard() {
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Truck className="h-6 w-6 text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-foreground">{profile.nome}</h1>
           <p className="text-sm text-muted-foreground">
             {profile.modelo_caminhao} • {profile.media_km_litro} km/l
           </p>
         </div>
+        <button
+          onClick={signOut}
+          className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+          title="Sair"
+        >
+          <LogOut className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Viagem ativa */}
