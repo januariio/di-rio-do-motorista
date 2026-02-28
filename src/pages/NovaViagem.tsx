@@ -19,10 +19,9 @@ export default function NovaViagem() {
     preco_diesel: '6.29',
   });
 
-  // Strip formatting (commas, spaces) before parsing
-  const distancia = parseFloat(form.distancia_km.replace(/[,\s]/g, '')) || 0;
-  const frete = parseFloat(form.valor_frete.replace(/[,\s]/g, '')) || 0;
-  const precoDiesel = parseFloat(form.preco_diesel.replace(/[,\s]/g, '')) || 0;
+  const distancia = parseFloat(form.distancia_km) || 0;
+  const frete = parseFloat(form.valor_frete) || 0;
+  const precoDiesel = parseFloat(form.preco_diesel) || 0;
 
   const litros = calcularLitros(distancia, profile.media_km_litro);
   const custoDiesel = calcularCustoDiesel(litros, precoDiesel);
