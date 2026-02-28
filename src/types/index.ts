@@ -34,7 +34,10 @@ export interface Abastecimento {
 }
 
 export interface UserProfile {
+  id?: string;
   nome: string;
+  email?: string;
+  whatsapp?: string;
   modelo_caminhao: string;
   media_km_litro: number;
   tipo_combustivel: string;
