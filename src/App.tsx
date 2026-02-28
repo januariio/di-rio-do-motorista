@@ -54,7 +54,7 @@ function AppRoutes() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MobileLayout>
-      </BrowserRouter>
+      </HashRouter>
     </StoreProvider>
   );
 }
