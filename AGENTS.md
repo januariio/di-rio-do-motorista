@@ -24,6 +24,13 @@ Vite + React 18 + TypeScript + Tailwind CSS + shadcn/ui + React Router v6. See `
 - A `profiles` table and `handle_new_user` trigger must exist in Supabase — see `supabase_setup.sql` for the full schema.
 - Supabase free tier has a 4 emails/hour rate limit for auth. If you hit "email rate limit exceeded", either wait ~1 hour or disable email confirmation in the Supabase dashboard (Authentication > Email > Confirm email → OFF).
 
+### Google Maps (opcional)
+
+- `VITE_GOOGLE_MAPS_API_KEY` habilita cálculo automático de distância no Simulador de Frete.
+- Usa a **Routes API** (moderna, REST) — não a Distance Matrix API (legacy).
+- API necessária no Google Cloud: **Routes API** (`routes.googleapis.com`).
+- Sem a key, o campo de distância aceita entrada manual normalmente.
+
 ### Deploy (GitHub Pages)
 
 - Production site: **https://januariio.github.io/di-rio-do-motorista/**
