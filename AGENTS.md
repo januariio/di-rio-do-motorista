@@ -19,5 +19,7 @@ Vite + React 18 + TypeScript + Tailwind CSS + shadcn/ui + React Router v6. See `
 
 - The lint command exits with code 1 due to pre-existing errors in generated shadcn/ui components (`@typescript-eslint/no-empty-object-type` in `command.tsx`/`textarea.tsx`, `@typescript-eslint/no-require-imports` in `tailwind.config.ts`). These are not regressions.
 - The app is entirely in Portuguese (Brazilian). UI labels, buttons, and navigation are in Portuguese.
-- **Supabase is required**: the app needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars (see `.env.example`). Without them, the dev server starts but the app shows an error. For local dev, pass them inline or create a `.env` file.
-- A `profiles` table must exist in Supabase — see `supabase_setup.sql` for the schema and RLS policies.
+- **Supabase is required**: the app needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars (see `.env.example`). Without them, the dev server starts but the app throws on load. For local dev, pass them inline: `VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... npm run dev`.
+- The `VITE_SUPABASE_URL` can be either the API URL (`https://xxx.supabase.co`) or the dashboard URL (`https://supabase.com/dashboard/project/xxx/...`) — the client auto-corrects dashboard URLs.
+- A `profiles` table and `handle_new_user` trigger must exist in Supabase — see `supabase_setup.sql` for the full schema.
+- Supabase free tier has a 4 emails/hour rate limit for auth. If you hit "email rate limit exceeded", either wait ~1 hour or disable email confirmation in the Supabase dashboard (Authentication > Email > Confirm email → OFF).
