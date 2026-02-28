@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Truck, LogIn, UserPlus } from 'lucide-react';
+import { Truck, LogIn, UserPlus, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Tab = 'login' | 'cadastro';
@@ -12,6 +12,7 @@ export default function AuthPage() {
   const { signIn, signUp } = useAuth();
   const [tab, setTab] = useState<Tab>('login');
   const [loading, setLoading] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
 
   const [loginForm, setLoginForm] = useState({ email: '', senha: '' });
   const [cadastroForm, setCadastroForm] = useState({
@@ -49,7 +50,7 @@ export default function AuthPage() {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(email, senha, {
+    const { error, needsConfirmation } = await signUp(email, senha, {
       nome,
       email,
       whatsapp: cadastroForm.whatsapp,
@@ -59,6 +60,8 @@ export default function AuthPage() {
     setLoading(false);
     if (error) {
       toast.error(error);
+    } else if (needsConfirmation) {
+      setConfirmationEmail(email);
     } else {
       toast.success('Conta criada com sucesso!');
     }
@@ -69,6 +72,37 @@ export default function AuthPage() {
 
   const updateCadastro = (field: string, value: string) =>
     setCadastroForm(prev => ({ ...prev, [field]: value }));
+
+  if (confirmationEmail) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center bg-background px-4 py-8">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <Mail className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Verifique seu email</h1>
+          <p className="text-muted-foreground">
+            Enviamos um link de confirmação para
+          </p>
+          <p className="font-semibold text-foreground">{confirmationEmail}</p>
+          <p className="text-sm text-muted-foreground">
+            Clique no link do email para ativar sua conta, depois volte aqui para fazer login.
+          </p>
+          <Button
+            onClick={() => {
+              setConfirmationEmail(null);
+              setTab('login');
+              setLoginForm({ email: confirmationEmail, senha: '' });
+            }}
+            className="mt-4 h-12 px-8 text-base font-bold"
+          >
+            <LogIn className="h-5 w-5 mr-2" />
+            Ir para Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-4 py-8">

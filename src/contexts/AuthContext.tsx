@@ -10,9 +10,14 @@ interface AuthState {
   loading: boolean;
 }
 
+interface SignUpResult {
+  error: string | null;
+  needsConfirmation?: boolean;
+}
+
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, profileData: Omit<UserProfile, 'id' | 'tipo_combustivel'>) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, profileData: Omit<UserProfile, 'id' | 'tipo_combustivel'>) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -39,6 +44,25 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   };
 }
 
+async function ensureProfile(user: User): Promise<UserProfile | null> {
+  let profile = await fetchProfile(user.id);
+  if (profile) return profile;
+
+  const meta = user.user_metadata ?? {};
+  const { error } = await supabase.from('profiles').insert({
+    id: user.id,
+    nome: meta.nome ?? 'Motorista',
+    email: user.email ?? '',
+    whatsapp: meta.whatsapp ?? '',
+    modelo_caminhao: meta.modelo_caminhao ?? 'Scania R450',
+    media_km_litro: meta.media_km_litro ?? 2.5,
+    tipo_combustivel: 'Diesel S10',
+  });
+
+  if (error) return null;
+  return fetchProfile(user.id);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     session: null,
@@ -48,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const loadProfile = useCallback(async (user: User) => {
-    const profile = await fetchProfile(user.id);
+    const profile = await ensureProfile(user);
     setState(prev => ({ ...prev, profile, loading: false }));
   }, []);
 
@@ -84,23 +108,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     profileData: Omit<UserProfile, 'id' | 'tipo_combustivel'>
-  ) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  ): Promise<SignUpResult> => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          nome: profileData.nome,
+          whatsapp: profileData.whatsapp ?? '',
+          modelo_caminhao: profileData.modelo_caminhao,
+          media_km_litro: profileData.media_km_litro,
+        },
+      },
+    });
     if (error) return { error: error.message };
     if (!data.user) return { error: 'Erro ao criar conta.' };
 
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      nome: profileData.nome,
-      email,
-      whatsapp: profileData.whatsapp ?? '',
-      modelo_caminhao: profileData.modelo_caminhao,
-      media_km_litro: profileData.media_km_litro,
-      tipo_combustivel: 'Diesel S10',
-    });
+    const hasSession = !!data.session;
 
-    if (profileError) return { error: profileError.message };
-    return { error: null };
+    if (hasSession) {
+      await ensureProfile(data.user);
+    }
+
+    return { error: null, needsConfirmation: !hasSession };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -110,9 +140,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (state.user) {
-      await loadProfile(state.user);
+      const profile = await ensureProfile(state.user);
+      setState(prev => ({ ...prev, profile }));
     }
-  }, [state.user, loadProfile]);
+  }, [state.user]);
 
   return (
     <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, refreshProfile }}>
