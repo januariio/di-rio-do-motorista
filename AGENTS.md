@@ -23,3 +23,10 @@ Vite + React 18 + TypeScript + Tailwind CSS + shadcn/ui + React Router v6. See `
 - The `VITE_SUPABASE_URL` can be either the API URL (`https://xxx.supabase.co`) or the dashboard URL (`https://supabase.com/dashboard/project/xxx/...`) — the client auto-corrects dashboard URLs.
 - A `profiles` table and `handle_new_user` trigger must exist in Supabase — see `supabase_setup.sql` for the full schema.
 - Supabase free tier has a 4 emails/hour rate limit for auth. If you hit "email rate limit exceeded", either wait ~1 hour or disable email confirmation in the Supabase dashboard (Authentication > Email > Confirm email → OFF).
+
+### Deploy (GitHub Pages)
+
+- Production site: **https://januariio.github.io/di-rio-do-motorista/**
+- Uses `HashRouter` (not `BrowserRouter`) for GitHub Pages SPA compatibility.
+- `vite.config.ts` sets `base: "/di-rio-do-motorista/"` in production mode.
+- To redeploy: `VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... npm run build && npx gh-pages -d dist --dotfiles`
