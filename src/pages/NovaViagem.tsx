@@ -1,44 +1,68 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/StoreContext';
 import { calcularLitros, calcularCustoDiesel, calcularMargem, calcularCustoPorKm, formatCurrency } from '@/utils/calculadora';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
+import CurrencyInput from '@/components/CurrencyInput';
+import { isGoogleMapsAvailable, calcularDistancia } from '@/lib/googleMaps';
+import { ArrowLeft, TrendingUp, TrendingDown, Calculator, MapPin, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function NovaViagem() {
   const navigate = useNavigate();
   const { profile, addViagem } = useAppStore();
 
-  const [form, setForm] = useState({
-    valor_frete: '',
-    cidade_origem: '',
-    cidade_destino: '',
-    distancia_km: '',
-    preco_diesel: '6.29',
-  });
+  const [valorFrete, setValorFrete] = useState(0);
+  const [precoDieselNum, setPrecoDieselNum] = useState(6.29);
+  const [cidadeOrigem, setCidadeOrigem] = useState('');
+  const [cidadeDestino, setCidadeDestino] = useState('');
+  const [distanciaKm, setDistanciaKm] = useState('');
+  const [calculandoRota, setCalculandoRota] = useState(false);
+  const [temGoogleMaps] = useState(isGoogleMapsAvailable);
 
-  const distancia = parseFloat(form.distancia_km) || 0;
-  const frete = parseFloat(form.valor_frete) || 0;
-  const precoDiesel = parseFloat(form.preco_diesel) || 0;
+  const distancia = parseFloat(distanciaKm) || 0;
 
   const litros = calcularLitros(distancia, profile.media_km_litro);
-  const custoDiesel = calcularCustoDiesel(litros, precoDiesel);
-  const margem = calcularMargem(frete, custoDiesel);
+  const custoDiesel = calcularCustoDiesel(litros, precoDieselNum);
+  const margem = calcularMargem(valorFrete, custoDiesel);
   const custoPorKm = calcularCustoPorKm(custoDiesel, distancia);
-  const margemPercentual = frete > 0 ? (margem / frete) * 100 : 0;
-
+  const margemPercentual = valorFrete > 0 ? (margem / valorFrete) * 100 : 0;
   const valeAPena = margemPercentual >= 30;
 
+  const handleCalcularDistancia = useCallback(async () => {
+    if (!cidadeOrigem.trim() || !cidadeDestino.trim()) return;
+    setCalculandoRota(true);
+    try {
+      const result = await calcularDistancia(cidadeOrigem, cidadeDestino);
+      setDistanciaKm(String(result.distanceKm));
+      toast.success(`Distância: ${result.distanceText} (${result.durationText})`);
+    } catch {
+      toast.error('Não foi possível calcular a rota. Verifique os nomes das cidades.');
+    } finally {
+      setCalculandoRota(false);
+    }
+  }, [cidadeOrigem, cidadeDestino]);
+
+  useEffect(() => {
+    if (!temGoogleMaps) return;
+    const timer = setTimeout(() => {
+      if (cidadeOrigem.trim().length >= 3 && cidadeDestino.trim().length >= 3) {
+        handleCalcularDistancia();
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [cidadeOrigem, cidadeDestino, temGoogleMaps, handleCalcularDistancia]);
+
   const handleIniciar = () => {
-    if (!form.cidade_origem || !form.cidade_destino || !frete || !distancia) return;
+    if (!cidadeOrigem || !cidadeDestino || !valorFrete || !distancia) return;
     const viagem = addViagem({
-      cidade_origem: form.cidade_origem,
-      cidade_destino: form.cidade_destino,
+      cidade_origem: cidadeOrigem,
+      cidade_destino: cidadeDestino,
       distancia_km: distancia,
-      valor_frete: frete,
-      preco_diesel: precoDiesel,
+      valor_frete: valorFrete,
+      preco_diesel: precoDieselNum,
       litros_estimados: litros,
       custo_estimado_diesel: custoDiesel,
       status: 'ativa',
@@ -46,8 +70,6 @@ export default function NovaViagem() {
     });
     navigate(`/viagem/${viagem.id}`);
   };
-
-  const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
   return (
     <div className="space-y-5 animate-slide-up">
@@ -60,13 +82,11 @@ export default function NovaViagem() {
 
       <div className="space-y-4">
         <div>
-          <Label>Valor do Frete (R$)</Label>
-          <Input
-            type="number"
-            inputMode="decimal"
-            placeholder="5.000,00"
-            value={form.valor_frete}
-            onChange={e => update('valor_frete', e.target.value)}
+          <Label>Valor do Frete</Label>
+          <CurrencyInput
+            value={valorFrete}
+            onChange={setValorFrete}
+            placeholder="0,00"
             className="mt-1 h-12 text-lg"
           />
         </div>
@@ -76,8 +96,8 @@ export default function NovaViagem() {
             <Label>Origem</Label>
             <Input
               placeholder="São Paulo"
-              value={form.cidade_origem}
-              onChange={e => update('cidade_origem', e.target.value)}
+              value={cidadeOrigem}
+              onChange={e => setCidadeOrigem(e.target.value)}
               className="mt-1 h-12"
             />
           </div>
@@ -85,8 +105,8 @@ export default function NovaViagem() {
             <Label>Destino</Label>
             <Input
               placeholder="Curitiba"
-              value={form.cidade_destino}
-              onChange={e => update('cidade_destino', e.target.value)}
+              value={cidadeDestino}
+              onChange={e => setCidadeDestino(e.target.value)}
               className="mt-1 h-12"
             />
           </div>
@@ -95,30 +115,43 @@ export default function NovaViagem() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Distância (km)</Label>
-            <Input
-              type="number"
-              inputMode="numeric"
-              placeholder="400"
-              value={form.distancia_km}
-              onChange={e => update('distancia_km', e.target.value)}
-              className="mt-1 h-12"
-            />
+            <div className="relative">
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder="400"
+                value={distanciaKm}
+                onChange={e => setDistanciaKm(e.target.value)}
+                className="mt-1 h-12"
+                readOnly={calculandoRota}
+              />
+              {calculandoRota && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 h-4 w-4 animate-spin text-primary" />
+              )}
+            </div>
+            {temGoogleMaps && cidadeOrigem && cidadeDestino && !calculandoRota && (
+              <button
+                onClick={handleCalcularDistancia}
+                className="flex items-center gap-1 mt-1 text-xs text-primary hover:underline"
+              >
+                <MapPin className="h-3 w-3" />
+                Recalcular rota
+              </button>
+            )}
           </div>
           <div>
             <Label>Diesel (R$/L)</Label>
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={form.preco_diesel}
-              onChange={e => update('preco_diesel', e.target.value)}
+            <CurrencyInput
+              value={precoDieselNum}
+              onChange={setPrecoDieselNum}
+              placeholder="0,00"
               className="mt-1 h-12"
             />
           </div>
         </div>
       </div>
 
-      {/* Resultado */}
-      {distancia > 0 && frete > 0 && (
+      {distancia > 0 && valorFrete > 0 && (
         <div className={`rounded-lg border p-4 space-y-3 ${valeAPena ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'}`}>
           <div className="flex items-center gap-2">
             {valeAPena ? (
@@ -161,7 +194,7 @@ export default function NovaViagem() {
         <Button
           className="flex-1 h-14 text-base font-bold"
           onClick={handleIniciar}
-          disabled={!form.cidade_origem || !form.cidade_destino || !frete || !distancia}
+          disabled={!cidadeOrigem || !cidadeDestino || !valorFrete || !distancia}
         >
           <Calculator className="mr-2 h-5 w-5" />
           Iniciar Viagem
