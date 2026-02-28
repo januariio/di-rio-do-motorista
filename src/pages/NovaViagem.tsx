@@ -23,11 +23,19 @@ export default function NovaViagem() {
   const frete = parseFloat(form.valor_frete) || 0;
   const precoDiesel = parseFloat(form.preco_diesel) || 0;
 
+  console.log('Form state:', form);
+  console.log('Parsed values:', { distancia, frete, precoDiesel });
+  console.log('Profile media:', profile.media_km_litro);
+  console.log('Condition check:', { hasOrigem: !!form.cidade_origem, hasDestino: !!form.cidade_destino, hasFrete: !!frete, hasDistancia: !!distancia });
+
   const litros = calcularLitros(distancia, profile.media_km_litro);
   const custoDiesel = calcularCustoDiesel(litros, precoDiesel);
   const margem = calcularMargem(frete, custoDiesel);
   const custoPorKm = calcularCustoPorKm(custoDiesel, distancia);
   const margemPercentual = frete > 0 ? (margem / frete) * 100 : 0;
+
+  console.log('Calculations:', { litros, custoDiesel, margem, custoPorKm, margemPercentual });
+  console.log('Should show estimates?', distancia > 0 && frete > 0);
 
   const valeAPena = margemPercentual >= 30;
 
