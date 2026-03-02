@@ -26,7 +26,7 @@ export interface Abastecimento {
   id: string;
   cidade: string;
   preco_diesel: number;
-  quilometragem: number;
+  hodometro: number;
   litragem: number;
   media_calculada: number;
   observacao?: string;

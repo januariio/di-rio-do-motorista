@@ -79,6 +79,7 @@ export function useStore() {
       saveToStorage(STORAGE_KEYS.ABASTECIMENTOS, next);
       return next;
     });
+    return novo;
   }, []);
 
   const getViagemAtiva = useCallback(() => {
