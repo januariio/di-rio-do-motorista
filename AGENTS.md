@@ -26,10 +26,9 @@ Vite + React 18 + TypeScript + Tailwind CSS + shadcn/ui + React Router v6. See `
 
 ### Google Maps (opcional)
 
-- `VITE_GOOGLE_MAPS_API_KEY` habilita cálculo automático de distância no Simulador de Frete.
-- Usa a **Routes API** (moderna, REST) — não a Distance Matrix API (legacy).
-- API necessária no Google Cloud: **Routes API** (`routes.googleapis.com`).
-- Sem a key, o campo de distância aceita entrada manual normalmente.
+- `VITE_GOOGLE_MAPS_API_KEY` habilita: autocomplete de cidades, cálculo de distância e busca de postos de combustível.
+- APIs necessárias no Google Cloud: **Routes API**, **Places API (New)**.
+- Sem a key, campos funcionam com entrada manual normalmente.
 
 ### Deploy (GitHub Pages)
 

@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import CurrencyInput from '@/components/CurrencyInput';
+import CityAutocomplete from '@/components/CityAutocomplete';
 import { isGoogleMapsAvailable, calcularDistancia } from '@/lib/googleMaps';
-import { ArrowLeft, TrendingUp, TrendingDown, Calculator, MapPin, Loader2 } from 'lucide-react';
+import { buscarPostosDiesel, GasStation } from '@/lib/dieselPrices';
+import { ArrowLeft, TrendingUp, TrendingDown, Calculator, MapPin, Loader2, Fuel, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function NovaViagem() {
@@ -21,6 +23,9 @@ export default function NovaViagem() {
   const [distanciaKm, setDistanciaKm] = useState('');
   const [calculandoRota, setCalculandoRota] = useState(false);
   const [temGoogleMaps] = useState(isGoogleMapsAvailable);
+
+  const [postos, setPostos] = useState<GasStation[]>([]);
+  const [buscandoPostos, setBuscandoPostos] = useState(false);
 
   const distancia = parseFloat(distanciaKm) || 0;
 
@@ -55,6 +60,25 @@ export default function NovaViagem() {
     return () => clearTimeout(timer);
   }, [cidadeOrigem, cidadeDestino, temGoogleMaps, handleCalcularDistancia]);
 
+  useEffect(() => {
+    if (!temGoogleMaps || cidadeOrigem.trim().length < 3) {
+      setPostos([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setBuscandoPostos(true);
+      try {
+        const results = await buscarPostosDiesel(cidadeOrigem);
+        setPostos(results);
+      } catch {
+        setPostos([]);
+      } finally {
+        setBuscandoPostos(false);
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [cidadeOrigem, temGoogleMaps]);
+
   const handleIniciar = () => {
     if (!cidadeOrigem || !cidadeDestino || !valorFrete || !distancia) return;
     const viagem = addViagem({
@@ -70,6 +94,11 @@ export default function NovaViagem() {
     });
     navigate(`/viagem/${viagem.id}`);
   };
+
+  const postosComPreco = postos.filter(p => p.fuelPrice);
+  const mediaPreco = postosComPreco.length > 0
+    ? postosComPreco.reduce((s, p) => s + (p.fuelPrice ?? 0), 0) / postosComPreco.length
+    : 0;
 
   return (
     <div className="space-y-5 animate-slide-up">
@@ -94,19 +123,19 @@ export default function NovaViagem() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Origem</Label>
-            <Input
-              placeholder="São Paulo"
+            <CityAutocomplete
+              placeholder="São Paulo - SP"
               value={cidadeOrigem}
-              onChange={e => setCidadeOrigem(e.target.value)}
+              onChange={setCidadeOrigem}
               className="mt-1 h-12"
             />
           </div>
           <div>
             <Label>Destino</Label>
-            <Input
-              placeholder="Curitiba"
+            <CityAutocomplete
+              placeholder="Curitiba - PR"
               value={cidadeDestino}
-              onChange={e => setCidadeDestino(e.target.value)}
+              onChange={setCidadeDestino}
               className="mt-1 h-12"
             />
           </div>
@@ -147,10 +176,69 @@ export default function NovaViagem() {
               placeholder="0,00"
               className="mt-1 h-12"
             />
+            {mediaPreco > 0 && (
+              <button
+                onClick={() => setPrecoDieselNum(Math.round(mediaPreco * 100) / 100)}
+                className="flex items-center gap-1 mt-1 text-xs text-primary hover:underline"
+              >
+                <Fuel className="h-3 w-3" />
+                Usar média da região: {formatCurrency(mediaPreco)}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Postos na região */}
+      {(buscandoPostos || postos.length > 0) && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Fuel className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Postos na região de origem
+            </h2>
+            {buscandoPostos && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+          </div>
+          {postos.length > 0 && (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {postos.slice(0, 6).map((p, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    if (p.fuelPrice) {
+                      setPrecoDieselNum(p.fuelPrice);
+                      toast.success(`Diesel de ${p.name}: ${formatCurrency(p.fuelPrice)}`);
+                    }
+                  }}
+                  className="flex items-center justify-between w-full rounded-lg bg-card border border-border p-2.5 text-left hover:bg-secondary/50 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{p.address}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                    {p.rating && (
+                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                        <Star className="h-3 w-3 fill-primary text-primary" />
+                        {p.rating.toFixed(1)}
+                      </span>
+                    )}
+                    {p.fuelPrice ? (
+                      <span className="text-sm font-bold text-success whitespace-nowrap">
+                        {formatCurrency(p.fuelPrice)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">--</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Resultado */}
       {distancia > 0 && valorFrete > 0 && (
         <div className={`rounded-lg border p-4 space-y-3 ${valeAPena ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'}`}>
           <div className="flex items-center gap-2">
